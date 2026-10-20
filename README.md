@@ -56,6 +56,86 @@ go install ./cmd/tasks
 The result is a single executable for Linux or macOS. There is no Node.js,
 PHP, Python, or other runtime dependency.
 
+## Nix
+
+A `flake.nix` is provided for building, running, and developing with Nix, and
+for consuming `tasks` from other Nix-based projects.
+
+### Build
+
+```bash
+nix build
+./result/bin/tasks --help
+```
+
+The package is exposed as both `packages.<system>.default` and
+`packages.<system>.tasks`.
+
+### Run
+
+```bash
+nix run . -- --help
+nix run .#tasks -- --version
+```
+
+### Development
+
+```bash
+nix develop
+go test ./...
+go run ./cmd/tasks --help
+```
+
+The development shell provides the Go toolchain matching `go.mod`, `gopls`, and
+`gotools`. It works with `direnv` and `use flake`.
+
+### Install into another flake
+
+Add `tasks` as a flake input and include the package in a development shell:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    tasks = {
+      url = "github:tomtomsen/tasks";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  };
+
+  outputs = { nixpkgs, tasks, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+    in
+    {
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [
+          tasks.packages.${system}.default
+        ];
+      };
+    };
+}
+```
+
+The `nixpkgs` input can be overridden with `follows`, and the consuming project
+does not need Go installed.
+
+### Update
+
+Update the pinned `tasks` revision:
+
+```bash
+nix flake update tasks
+```
+
+To develop against a local checkout instead:
+
+```bash
+nix develop --override-input tasks path:../tasks
+```
+
 ## Configuration
 
 The configuration file is `tasks.yaml` by default; select another file with

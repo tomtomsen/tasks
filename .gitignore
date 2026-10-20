@@ -1,2 +1,8 @@
 /tasks
 *.log
+
+# Nix build artifacts
+result
+result-*
+.direnv/
+.envrc

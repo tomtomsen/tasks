@@ -178,3 +178,25 @@ func TestDefaultConcurrency(t *testing.T) {
 		t.Fatalf("continue_on_error should default to true")
 	}
 }
+
+func TestCollapseDefaultsToFalse(t *testing.T) {
+	path := writeConfig(t, "version: 1\ntasks:\n  - name: A\n    command: echo a\n")
+	res, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Collapse {
+		t.Fatalf("collapse should default to false")
+	}
+}
+
+func TestCollapseEnabled(t *testing.T) {
+	path := writeConfig(t, "version: 1\nsettings:\n  renderer:\n    collapse: true\ntasks:\n  - name: A\n    command: echo a\n")
+	res, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !res.Collapse {
+		t.Fatalf("collapse should be true")
+	}
+}

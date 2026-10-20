@@ -72,6 +72,9 @@ settings:
   concurrency: 4          # maximum simultaneously running commands
   continue_on_error: true # keep running independent tasks after a failure
 
+  renderer:
+    collapse: true        # collapse successful groups into a single line
+
 tasks:
   - name: Pre-commit checks
     tasks:
@@ -119,7 +122,31 @@ invalid timeouts are all rejected with messages that identify the offending
 task path (e.g. `Pre-commit checks > Web Admin`).
 
 Defaults: `concurrency` defaults to the number of CPUs; `continue_on_error`
-defaults to `true`.
+defaults to `true`; `renderer.collapse` defaults to `false`.
+
+### Collapsing
+
+The interactive renderer can collapse successfully completed groups into a
+single line. This is a presentation-only concern: it never affects the task
+tree, execution, or error reporting.
+
+```yaml
+settings:
+  renderer:
+    collapse: true   # default: false
+```
+
+- With `collapse: false` (the default), every task stays visible throughout the
+  run, and completed tasks change status in place.
+- With `collapse: true`, only successfully completed groups collapse. Running,
+  failed, pending, skipped, and cancelled groups always remain expanded.
+
+The CLI overrides the configuration in either direction:
+
+```sh
+tasks run --collapse     # force collapse on
+tasks run --no-collapse  # force collapse off
+```
 
 ## Execution and concurrency
 
@@ -157,13 +184,14 @@ second signal forces immediate exit.
 Two renderers are selected automatically, or explicitly with `--renderer`:
 
 - **interactive** (default on a TTY): animated spinners, a hierarchical tree,
-  successful groups collapse automatically, failed and running groups stay
-  expanded, durations on completed tasks, in-place updates with a hidden
-  cursor. It does not use an alternate screen buffer, so the final result
-  remains in the terminal scrollback.
+  in-place updates with a hidden cursor, durations on completed tasks, and
+  optional collapsing of successful groups (see [Collapsing](#collapsing)).
+  Running and failed groups always stay expanded. It does not use an alternate
+  screen buffer, so the final result remains in the terminal scrollback.
 - **plain** (default when output is redirected or in CI): stable,
   line-oriented `START`/`PASS`/`FAIL`/`SKIP`/`CANCEL` records with no ANSI
-  cursor movement, no spinners, and no color.
+  cursor movement, no spinners, and no color. The collapse option has no effect
+  on plain output.
 
 Selecting `--renderer=interactive` without a usable TTY fails with a clear
 error.
@@ -199,6 +227,8 @@ tasks run --config=custom.yaml
 tasks run --concurrency=8         # override settings.concurrency
 tasks run --renderer=plain
 tasks run --renderer=interactive
+tasks run --collapse              # collapse successful groups
+tasks run --no-collapse           # keep all tasks visible
 tasks run --verbose
 tasks run --log-file=tasks.log
 tasks --version

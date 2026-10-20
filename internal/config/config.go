@@ -33,6 +33,15 @@ type Settings struct {
 	// ContinueOnError controls whether independent tasks keep running after
 	// a failure. nil means true (the default).
 	ContinueOnError *bool `yaml:"continue_on_error"`
+	// Renderer holds presentation options for the interactive renderer.
+	Renderer RendererSettings `yaml:"renderer"`
+}
+
+// RendererSettings holds presentation options for the interactive renderer.
+type RendererSettings struct {
+	// Collapse controls whether successfully completed groups collapse their
+	// descendants into a single line. nil means false (the default).
+	Collapse *bool `yaml:"collapse"`
 }
 
 // Task is a raw task node as it appears in the YAML file.
@@ -65,6 +74,7 @@ type TaskDef struct {
 type Resolved struct {
 	Concurrency     int
 	ContinueOnError bool
+	Collapse        bool
 	Tasks           []*TaskDef
 }
 
@@ -103,6 +113,10 @@ func Load(path string) (*Resolved, error) {
 
 	if cfg.Settings.ContinueOnError != nil {
 		resolved.ContinueOnError = *cfg.Settings.ContinueOnError
+	}
+
+	if cfg.Settings.Renderer.Collapse != nil {
+		resolved.Collapse = *cfg.Settings.Renderer.Collapse
 	}
 
 	if len(cfg.Tasks) == 0 {

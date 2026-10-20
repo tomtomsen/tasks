@@ -79,3 +79,33 @@ func TestWriteSummaryMixed(t *testing.T) {
 		t.Fatalf("summary = %q", buf.String())
 	}
 }
+
+// Failure reports must carry the full task path even when the interactive
+// renderer collapses ancestors, because the report is built directly from the
+// task tree, not from the rendered view.
+func TestFailureReportsFullPath(t *testing.T) {
+	model := task.NewModel([]*config.TaskDef{
+		{
+			Name: "root", IsGroup: true, Path: "root",
+			Children: []*config.TaskDef{
+				{
+					Name: "sub", IsGroup: true, Path: "root > sub",
+					Children: []*config.TaskDef{
+						{Name: "leaf", Command: "cmd", Path: "root > sub > leaf"},
+					},
+				},
+			},
+		},
+	})
+	n := model.Leaves()[0]
+	model.MarkRunning(n)
+	model.MarkFinished(n, task.Result{ExitCode: 1})
+
+	rep := Build(model)
+	if len(rep.Failures) != 1 {
+		t.Fatalf("failures = %+v", rep.Failures)
+	}
+	if rep.Failures[0].Path != "root > sub > leaf" {
+		t.Fatalf("path = %q, want full path %q", rep.Failures[0].Path, "root > sub > leaf")
+	}
+}

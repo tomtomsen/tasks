@@ -32,6 +32,8 @@ Run flags:
   --config=FILE       configuration file (default "tasks.yaml")
   --concurrency=N     override settings.concurrency
   --renderer=MODE     "interactive" or "plain" (default: auto by TTY)
+  --collapse          collapse successfully completed task groups
+  --no-collapse       keep all tasks visible (default)
   --verbose           include successful task output in the report
   --log-file=FILE     write a full per-task log to FILE
 `
@@ -67,6 +69,8 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 	configPath := fs.String("config", "tasks.yaml", "configuration file")
 	concurrency := fs.Int("concurrency", 0, "override settings.concurrency")
 	renderer := fs.String("renderer", "", "interactive or plain")
+	collapseOn := fs.Bool("collapse", false, "collapse successfully completed task groups")
+	collapseOff := fs.Bool("no-collapse", false, "keep all tasks visible")
 	verbose := fs.Bool("verbose", false, "include successful task output")
 	logFile := fs.String("log-file", "", "write a full per-task log")
 
@@ -89,6 +93,12 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 
 	if *concurrency > 0 {
 		res.Concurrency = *concurrency
+	}
+
+	collapse, err := resolveCollapse(res.Collapse, *collapseOn, *collapseOff)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 2
 	}
 
 	stdoutTTY := isTerminal(stdout)
@@ -143,6 +153,7 @@ func runCommand(args []string, stdout, stderr io.Writer) int {
 		Renderer:        *renderer,
 		Verbose:         *verbose,
 		LogFile:         *logFile,
+		Collapse:        collapse,
 		Size: func() (int, int) {
 			return termSize(stdout)
 		},
@@ -193,5 +204,21 @@ func termSize(w io.Writer) (int, int) {
 func restoreCursor(tty bool, w io.Writer) {
 	if tty {
 		_, _ = io.WriteString(w, "\x1b[?25h")
+	}
+}
+
+// resolveCollapse merges the collapse CLI flags with the configuration value.
+// The CLI overrides the configuration in either direction; passing both flags
+// is an error.
+func resolveCollapse(configValue, collapseOn, collapseOff bool) (bool, error) {
+	switch {
+	case collapseOn && collapseOff:
+		return false, fmt.Errorf("--collapse and --no-collapse cannot both be set")
+	case collapseOn:
+		return true, nil
+	case collapseOff:
+		return false, nil
+	default:
+		return configValue, nil
 	}
 }

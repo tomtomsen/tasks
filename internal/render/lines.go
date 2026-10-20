@@ -91,17 +91,19 @@ func truncate(s string, max int) string {
 	return string(r[:max-1]) + "…"
 }
 
-// renderTree builds the visible lines for a task tree, honoring collapse of
-// successful groups and terminal width constraints.
-func renderTree(snaps []task.Snapshot, frame, width int, color bool) []string {
+// renderTree builds the visible lines for a task tree, honoring the collapse
+// option and terminal width constraints. When collapse is enabled, a
+// successfully completed group is rendered as a single line; running, failed,
+// pending, skipped, and cancelled groups always remain expanded.
+func renderTree(snaps []task.Snapshot, frame, width int, color, collapse bool) []string {
 	lines := make([]string, 0, len(snaps)*2)
 	for i, s := range snaps {
-		renderNode(s, 0, frame, i, width, color, &lines)
+		renderNode(s, 0, frame, i, width, color, collapse, &lines)
 	}
 	return lines
 }
 
-func renderNode(s task.Snapshot, depth, frame, idx, width int, color bool, lines *[]string) {
+func renderNode(s task.Snapshot, depth, frame, idx, width int, color, collapse bool, lines *[]string) {
 	indent := strings.Repeat("  ", depth)
 	glyphPlain := glyphFor(s.State, frame, idx)
 
@@ -133,11 +135,13 @@ func renderNode(s task.Snapshot, depth, frame, idx, width int, color bool, lines
 
 	*lines = append(*lines, indent+glyph+" "+displayName+suffix)
 
-	expanded := s.State == task.StateRunning || s.State == task.StateFailed || s.State == task.StateCancelled
+	// Only successfully completed groups collapse, and only when the collapse
+	// option is enabled. Everything else stays expanded.
+	expanded := !collapse || !s.IsGroup || s.State != task.StateSucceeded
 	if !expanded {
 		return
 	}
 	for j, c := range s.Children {
-		renderNode(c, depth+1, frame, idx+j, width, color, lines)
+		renderNode(c, depth+1, frame, idx+j, width, color, collapse, lines)
 	}
 }

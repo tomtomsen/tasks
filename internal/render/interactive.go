@@ -12,10 +12,15 @@ import (
 // a terminal. It does not use an alternate screen buffer: frames are drawn by
 // moving the cursor up and overwriting previous lines, leaving the final state
 // in the scrollback.
+//
+// Rendering invariant: after every frame, the cursor sits at the start of the
+// line immediately below the last rendered line, and exactly `drawn` lines of
+// content are on screen.
 type interactiveRenderer struct {
-	out   io.Writer
-	size  func() (width, height int)
-	color bool
+	out      io.Writer
+	size     func() (width, height int)
+	color    bool
+	collapse bool
 
 	frame        int
 	drawn        int
@@ -24,9 +29,10 @@ type interactiveRenderer struct {
 
 func newInteractive(opts Options) *interactiveRenderer {
 	return &interactiveRenderer{
-		out:   opts.Out,
-		size:  opts.Size,
-		color: !opts.NoColor,
+		out:      opts.Out,
+		size:     opts.Size,
+		color:    !opts.NoColor,
+		collapse: opts.Collapse,
 	}
 }
 
@@ -48,11 +54,12 @@ func (r *interactiveRenderer) Start() {
 
 func (r *interactiveRenderer) Update(snaps []task.Snapshot) {
 	r.frame++
-	r.redraw(renderTree(snaps, r.frame, r.width(), r.color))
+	r.redraw(renderTree(snaps, r.frame, r.width(), r.color, r.collapse))
 }
 
 func (r *interactiveRenderer) Stop(snaps []task.Snapshot) {
-	r.redraw(renderTree(snaps, r.frame, r.width(), r.color))
+	// The final frame is rendered exactly once here, with no spinner animation.
+	r.redraw(renderTree(snaps, r.frame, r.width(), r.color, r.collapse))
 	if r.cursorHidden {
 		_, _ = io.WriteString(r.out, "\x1b[?25h")
 		r.cursorHidden = false
@@ -61,7 +68,7 @@ func (r *interactiveRenderer) Stop(snaps []task.Snapshot) {
 }
 
 // redraw overwrites the previously drawn lines with the new frame, leaving the
-// cursor on the line immediately after the last drawn line.
+// cursor at the start of the line immediately after the last rendered line.
 func (r *interactiveRenderer) redraw(lines []string) {
 	var b bytes.Buffer
 
@@ -75,9 +82,15 @@ func (r *interactiveRenderer) redraw(lines []string) {
 		b.WriteByte('\n')
 	}
 
+	// Clear any lines left over from a previous, taller frame, then move the
+	// cursor back up so it sits just below the new frame (restoring the
+	// invariant above).
 	leftover := r.drawn - len(lines)
 	for i := 0; i < leftover; i++ {
 		b.WriteString("\x1b[2K\n")
+	}
+	if leftover > 0 {
+		fmt.Fprintf(&b, "\x1b[%dA", leftover)
 	}
 
 	_, _ = r.out.Write(b.Bytes())

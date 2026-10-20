@@ -20,6 +20,7 @@ type Options struct {
 	Renderer        string
 	Verbose         bool
 	LogFile         string
+	Collapse        bool
 	Size            func() (width, height int)
 	NoColor         bool
 }
@@ -37,10 +38,11 @@ func Run(ctx context.Context, res *config.Resolved, opts Options, stdout, stderr
 	sched := NewScheduler(model, exec, opts.Concurrency, opts.ContinueOnError, ctx)
 
 	r := render.New(render.Options{
-		Mode:    mode,
-		Out:     stdout,
-		Size:    opts.Size,
-		NoColor: opts.NoColor,
+		Mode:     mode,
+		Out:      stdout,
+		Size:     opts.Size,
+		NoColor:  opts.NoColor,
+		Collapse: opts.Collapse,
 	})
 
 	r.Start()

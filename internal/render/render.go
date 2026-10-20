@@ -49,6 +49,9 @@ type Options struct {
 	Size func() (width, height int)
 	// NoColor disables ANSI colors in interactive mode.
 	NoColor bool
+	// Collapse enables collapsing of successfully completed groups in the
+	// interactive renderer. It has no effect on the plain renderer.
+	Collapse bool
 }
 
 // SelectMode resolves the renderer mode from an explicit flag and TTY status.

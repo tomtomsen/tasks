@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+# Run the configured tasks and fail the commit if any check fails.
+# The tool propagates a nonzero exit status, so Git will abort the commit.
+exec tasks run --config=tasks.yaml

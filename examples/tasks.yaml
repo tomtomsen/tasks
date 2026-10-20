@@ -1,0 +1,32 @@
+version: 1
+
+settings:
+  concurrency: 4
+  continue_on_error: true
+
+tasks:
+  - name: Demo checks
+    tasks:
+      - name: Formatting
+        description: Code style and formatting
+        tasks:
+          - name: whitespace
+            command: echo "no formatting issues" && sleep 1
+          - name: lint
+            command: sleep 2 && echo "lint ok"
+
+      - name: Tests
+        env:
+          GREETING: hello
+        tasks:
+          - name: fast test
+            command: echo "fast test passed ($GREETING)" && sleep 1
+          - name: slow test
+            command: sleep 2 && echo "slow test passed"
+
+      - name: Parallel
+        tasks:
+          - name: parallel a
+            command: sleep 3 && echo a
+          - name: parallel b
+            command: sleep 3 && echo b
